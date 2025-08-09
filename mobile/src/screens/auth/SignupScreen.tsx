@@ -115,6 +115,7 @@ export function SignupScreen(): ReactElement {
         <TextInput
           style={styles.input}
           placeholder="Full Name"
+          placeholderTextColor="#999999"
           value={form.fullName}
           onChangeText={(text) => setForm(prev => ({ ...prev, fullName: text }))}
           autoCapitalize="words"
@@ -123,6 +124,7 @@ export function SignupScreen(): ReactElement {
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor="#999999"
           value={form.email}
           onChangeText={(text) => setForm(prev => ({ ...prev, email: text }))}
           keyboardType="email-address"
@@ -132,6 +134,7 @@ export function SignupScreen(): ReactElement {
         <TextInput
           style={styles.input}
           placeholder="Phone Number"
+          placeholderTextColor="#999999"
           value={form.phoneNumber}
           onChangeText={(text) => setForm(prev => ({ ...prev, phoneNumber: text }))}
           keyboardType="phone-pad"
@@ -140,6 +143,7 @@ export function SignupScreen(): ReactElement {
         <TextInput
           style={styles.input}
           placeholder="BVN"
+          placeholderTextColor="#999999"
           value={form.bvn}
           onChangeText={(text) => setForm(prev => ({ ...prev, bvn: text }))}
           keyboardType="numeric"
@@ -148,6 +152,7 @@ export function SignupScreen(): ReactElement {
         <TextInput
           style={styles.input}
           placeholder="Password"
+          placeholderTextColor="#999999"
           value={form.password}
           onChangeText={(text) => setForm(prev => ({ ...prev, password: text }))}
           secureTextEntry
@@ -156,6 +161,7 @@ export function SignupScreen(): ReactElement {
         <TextInput
           style={styles.input}
           placeholder="Confirm Password"
+          placeholderTextColor="#999999"
           value={form.confirmPassword}
           onChangeText={(text) => setForm(prev => ({ ...prev, confirmPassword: text }))}
           secureTextEntry
@@ -259,6 +265,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
+    color: '#000000',
+    backgroundColor: '#FFFFFF',
   },
   button: {
     backgroundColor: '#000',
