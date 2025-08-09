@@ -1,14 +1,16 @@
-import { StyleSheet, View, Text, Animated } from 'react-native';
-import { type ReactElement, useEffect, useRef, useCallback } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { type ReactElement, useEffect, useCallback } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as SplashScreen from 'expo-splash-screen';
 import { type RootStackParamList } from '../../types/navigation';
 import { supabase } from '../../services/supabase';
 
+// Configure splash screen to stay visible while we check auth
+SplashScreen.preventAutoHideAsync();
+
 export function LoadingScreen(): ReactElement {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   const checkAuth = useCallback(async () => {
     try {
@@ -43,11 +45,13 @@ export function LoadingScreen(): ReactElement {
 
       // Navigate based on user role
       if (profile.role === 'driver') {
+        await SplashScreen.hideAsync();
         navigation.reset({
           index: 0,
           routes: [{ name: 'Driver', params: { screen: 'Dashboard' } }],
         });
       } else {
+        await SplashScreen.hideAsync();
         navigation.reset({
           index: 0,
           routes: [{ name: 'Rider', params: { screen: 'Home' } }],
@@ -55,6 +59,7 @@ export function LoadingScreen(): ReactElement {
       }
     } catch (error) {
       console.error('Error checking auth:', error);
+      await SplashScreen.hideAsync();
       navigation.reset({
         index: 0,
         routes: [{ name: 'Auth', params: { screen: 'Main' } }],
@@ -62,86 +67,18 @@ export function LoadingScreen(): ReactElement {
     }
   }, [navigation]);
 
-  const createPulse = useCallback(() => {
-    return Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 1.1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-    ]);
-  }, [scaleAnim]);
-
-  const startAnimationSequence = useCallback(() => {
-    // Repeat pulse 5 times
-    const pulseArray = Array(5).fill(null).map(() => createPulse());
-    
-    Animated.sequence([
-      // First do 5 pulses
-      Animated.sequence(pulseArray),
-      // Then do the final roll out animation
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 1.5,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start(() => {
-      checkAuth();
-    });
-  }, [scaleAnim, opacityAnim, checkAuth, createPulse]);
-
   useEffect(() => {
-    // Initial fade in
-    Animated.timing(opacityAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
+    // Check auth when component mounts
+    checkAuth();
+  }, [checkAuth]);
 
-    const timeout = setTimeout(startAnimationSequence, 500);
-    return () => clearTimeout(timeout);
-  }, [opacityAnim, startAnimationSequence]);
-
-  return (
-    <View style={styles.container}>
-      <Animated.Text 
-        style={[
-          styles.logo,
-          {
-            transform: [{ scale: scaleAnim }],
-            opacity: opacityAnim,
-          },
-        ]}
-      >
-        TaxiFi
-      </Animated.Text>
-    </View>
-  );
+  // Return empty view since splash screen handles the UI
+  return <View style={styles.container} />;
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logo: {
-    color: '#FFFFFF',
-    fontSize: 48,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
+  }
 });
