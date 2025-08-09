@@ -24,7 +24,6 @@ interface SignupForm {
   confirmPassword: string;
   fullName: string;
   phoneNumber: string;
-  bvn: string;
   role: UserRole | null;
 }
 
@@ -34,7 +33,6 @@ const initialForm: SignupForm = {
   confirmPassword: '',
   fullName: '',
   phoneNumber: '',
-  bvn: '',
   role: null
 };
 
@@ -47,7 +45,7 @@ export function SignupScreen(): ReactElement {
   const [step, setStep] = useState<SignupStep>('role');
 
   const validateForm = () => {
-    if (!form.email || !form.password || !form.confirmPassword || !form.fullName || !form.phoneNumber || !form.bvn || !form.role) {
+    if (!form.email || !form.password || !form.confirmPassword || !form.fullName || !form.phoneNumber || !form.role) {
       Alert.alert('Error', 'Please fill in all fields');
       return false;
     }
@@ -61,10 +59,6 @@ export function SignupScreen(): ReactElement {
     }
     if (!/^\d{11}$/.test(form.phoneNumber)) {
       Alert.alert('Error', 'Please enter a valid phone number');
-      return false;
-    }
-    if (!/^\d{11}$/.test(form.bvn)) {
-      Alert.alert('Error', 'Please enter a valid BVN');
       return false;
     }
     return true;
@@ -87,8 +81,7 @@ export function SignupScreen(): ReactElement {
           data: {
             full_name: form.fullName,
             phone_number: form.phoneNumber,
-            role: form.role,
-            bvn: form.bvn
+            role: form.role
           }
         }
       });
@@ -96,7 +89,27 @@ export function SignupScreen(): ReactElement {
       if (error) throw error;
 
       if (user) {
-        navigation.navigate('EmailVerification', { email: form.email });
+        // Create user profile in public.users table
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([{
+            id: user.id,
+            email: form.email,
+            full_name: form.fullName,
+            phone_number: form.phoneNumber,
+            role: form.role,
+            wallet_id: user.id, // Using user.id as wallet_id for simplicity
+            status: 'active'
+          }]);
+
+        if (profileError) throw profileError;
+
+        // Skip email verification and proceed to appropriate dashboard
+        if (form.role === 'driver') {
+          navigation.navigate('Driver', { screen: 'Dashboard' });
+        } else {
+          navigation.navigate('Rider', { screen: 'Home' });
+        }
       }
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -112,60 +125,66 @@ export function SignupScreen(): ReactElement {
 
     return (
       <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Full Name"
-          placeholderTextColor="#999999"
-          value={form.fullName}
-          onChangeText={(text) => setForm(prev => ({ ...prev, fullName: text }))}
-          autoCapitalize="words"
-        />
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Full Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your full name"
+            placeholderTextColor="#999999"
+            value={form.fullName}
+            onChangeText={(text) => setForm(prev => ({ ...prev, fullName: text }))}
+            autoCapitalize="words"
+          />
+        </View>
         
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#999999"
-          value={form.email}
-          onChangeText={(text) => setForm(prev => ({ ...prev, email: text }))}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email address"
+            placeholderTextColor="#999999"
+            value={form.email}
+            onChangeText={(text) => setForm(prev => ({ ...prev, email: text }))}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Phone Number"
-          placeholderTextColor="#999999"
-          value={form.phoneNumber}
-          onChangeText={(text) => setForm(prev => ({ ...prev, phoneNumber: text }))}
-          keyboardType="phone-pad"
-        />
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Phone Number</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your phone number"
+            placeholderTextColor="#999999"
+            value={form.phoneNumber}
+            onChangeText={(text) => setForm(prev => ({ ...prev, phoneNumber: text }))}
+            keyboardType="phone-pad"
+          />
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="BVN"
-          placeholderTextColor="#999999"
-          value={form.bvn}
-          onChangeText={(text) => setForm(prev => ({ ...prev, bvn: text }))}
-          keyboardType="numeric"
-        />
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Create a password"
+            placeholderTextColor="#999999"
+            value={form.password}
+            onChangeText={(text) => setForm(prev => ({ ...prev, password: text }))}
+            secureTextEntry
+          />
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#999999"
-          value={form.password}
-          onChangeText={(text) => setForm(prev => ({ ...prev, password: text }))}
-          secureTextEntry
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm Password"
-          placeholderTextColor="#999999"
-          value={form.confirmPassword}
-          onChangeText={(text) => setForm(prev => ({ ...prev, confirmPassword: text }))}
-          secureTextEntry
-        />
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Confirm Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm your password"
+            placeholderTextColor="#999999"
+            value={form.confirmPassword}
+            onChangeText={(text) => setForm(prev => ({ ...prev, confirmPassword: text }))}
+            secureTextEntry
+          />
+        </View>
 
         <TouchableOpacity 
           style={styles.button}
@@ -254,9 +273,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#333333',
+    marginBottom: 8,
   },
   input: {
     height: 48,
