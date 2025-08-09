@@ -18,7 +18,8 @@ export function LoadingScreen(): ReactElement {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        // No session, navigate to Auth
+        // No session, hide splash and navigate to Auth
+        await SplashScreen.hideAsync();
         navigation.reset({
           index: 0,
           routes: [{ name: 'Auth', params: { screen: 'Main' } }],
@@ -36,6 +37,7 @@ export function LoadingScreen(): ReactElement {
       if (!profile) {
         // User exists in auth but not in database
         await supabase.auth.signOut();
+        await SplashScreen.hideAsync();
         navigation.reset({
           index: 0,
           routes: [{ name: 'Auth', params: { screen: 'Main' } }],
@@ -59,7 +61,12 @@ export function LoadingScreen(): ReactElement {
       }
     } catch (error) {
       console.error('Error checking auth:', error);
-      await SplashScreen.hideAsync();
+      // Make sure splash screen is hidden even if there's an error
+      try {
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        console.error('Error hiding splash screen:', e);
+      }
       navigation.reset({
         index: 0,
         routes: [{ name: 'Auth', params: { screen: 'Main' } }],
