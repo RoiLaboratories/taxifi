@@ -78,26 +78,18 @@ export function SignupScreen(): ReactElement {
       const { data: { user }, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
+        options: {
+          data: {
+            full_name: form.fullName,
+            phone_number: form.phoneNumber,
+            role: form.role
+          }
+        }
       });
 
       if (error) throw error;
 
       if (user) {
-        // Create user profile using service role client
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: user.id,
-            email: form.email,
-            full_name: form.fullName,
-            phone_number: form.phoneNumber,
-            role: form.role,
-            wallet_id: user.id, // Using user.id as wallet_id for simplicity
-            status: 'active'
-          })
-          .select();
-
-        if (profileError) throw profileError;
 
         // Skip email verification and proceed to appropriate dashboard
         if (form.role === 'driver') {
