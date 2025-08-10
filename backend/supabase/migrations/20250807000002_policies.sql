@@ -15,15 +15,6 @@ drop policy if exists "Chat messages viewable by participants" on public.chat_me
 drop policy if exists "Chat participants can send messages" on public.chat_messages;
 drop policy if exists "Chat participants can view rooms" on public.chat_rooms;
 
--- Drop drive and save policies
-drop policy if exists "Drivers can view their savings plan" on public.drive_and_save;
-drop policy if exists "Drivers can create savings plan" on public.drive_and_save;
-drop policy if exists "Drivers can complete savings plan" on public.drive_and_save;
-drop policy if exists "Drivers can break savings plan" on public.drive_and_save;
-drop policy if exists "Drivers can delete inactive savings plan" on public.drive_and_save;
-drop policy if exists "Drivers can manage savings plan" on public.drive_and_save;
-drop policy if exists "Drive and save plans viewable by owner" on public.drive_and_save;
-
 -- Enable Row Level Security on all tables
 alter table public.users enable row level security;
 alter table public.wallets enable row level security;
@@ -34,37 +25,44 @@ alter table public.transactions enable row level security;
 alter table public.chat_rooms enable row level security;
 alter table public.chat_messages enable row level security;
 alter table public.chat_typing enable row level security;
+drop policy if exists "Users can view own profile" on public.users;
+drop policy if exists "Users can update own profile" on public.users;
+drop policy if exists "Users can insert own profile" on public.users;
+drop policy if exists "Wallets are viewable by owner" on public.wallets;
+drop policy if exists "Rides are viewable by participants" on public.rides;
+drop policy if exists "Riders can request rides" on public.rides;
+drop policy if exists "Drivers can accept rides" on public.rides;
+drop policy if exists "Chat messages viewable by participants" on public.chat_messages;
 
 -- Users table policies
--- Allow service role full access
-create policy "Enable all access for service role"
-  on public.users
-  to service_role
-  using (true)
+-- Allow the trigger to insert new users
+create policy "Allow trigger to insert users"
+  on public.users 
+  for insert
+  to authenticated, anon
   with check (true);
 
--- Allow users to view their own profile
-create policy "Enable read access for users"
+-- Allow users to manage their own profile
+create policy "Enable users to manage their profile"
+  on public.users
+  for all
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+create policy "Users can view own profile"
   on public.users for select
   using (auth.uid() = id);
 
--- Allow users to update their own profile
-create policy "Enable update access for users"
+create policy "Users can update own profile"
   on public.users for update
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
--- Allow authenticated users to insert their own profile
-create policy "Enable insert for authenticated users"
-  on public.users for insert
-  with check (auth.uid() = id);
-
--- Wallets policies
+-- Wallets table policies
 create policy "Wallets are viewable by owner"
   on public.wallets for select
   using (auth.uid() = user_id);
 
--- Transactions policies
 create policy "Users can view wallet transactions"
   on public.transactions for select
   using (
@@ -76,10 +74,13 @@ create policy "Users can view wallet transactions"
     )
   );
 
--- Rides policies
+-- Rides table policies
 create policy "Rides are viewable by participants"
   on public.rides for select
-  using (auth.uid() = rider_id or auth.uid() = driver_id);
+  using (
+    auth.uid() = rider_id or 
+    auth.uid() = driver_id
+  );
 
 create policy "Riders can request rides"
   on public.rides for insert
@@ -108,10 +109,10 @@ create policy "Drivers can accept rides"
 create policy "Chat messages viewable by participants"
   on public.chat_messages for select
   using (
-    exists (
-      select 1 from public.rides
-      where id = chat_messages.ride_id
-      and (rider_id = auth.uid() or driver_id = auth.uid())
+    auth.uid() in (
+      select rider_id from public.rides where id = chat_messages.ride_id
+      union
+      select driver_id from public.rides where id = chat_messages.ride_id
     )
   );
 
@@ -126,42 +127,78 @@ create policy "Chat participants can send messages"
     )
   );
 
-create policy "Chat rooms viewable by participants"
+create policy "Chat participants can view rooms"
   on public.chat_rooms for select
   using (driver_id = auth.uid() or rider_id = auth.uid());
 
 -- Drive and save wallet policies
-create policy "Drive and save wallets viewable by owner"
+create policy "Drivers can view their drive and save wallet"
   on public.drive_and_save_wallets for select
   using (auth.uid() = driver_id);
 
-create policy "Drivers can update drive and save wallet"
+create policy "Drivers can withdraw from their drive and save wallet"
   on public.drive_and_save_wallets for update
-  using (auth.uid() = driver_id);
+  using (
+    auth.uid() = driver_id 
+    and exists (
+      select 1 from public.users 
+      where id = auth.uid() 
+      and role = 'driver' 
+      and status = 'active'
+    )
+  );
 
 -- Drive and save policies
-create policy "Drive and save plans viewable by owner"
+create policy "Drivers can view their savings plan"
   on public.drive_and_save for select
   using (auth.uid() = driver_id);
 
 create policy "Drivers can create savings plan"
   on public.drive_and_save for insert
   with check (
-    auth.uid() = driver_id and
-    status = 'active' and
-    save_percentage between 1 and 100 and
-    duration_days in (7, 30, 365)
-  );
-
-create policy "Drivers can manage savings plan"
-  on public.drive_and_save for update
-  using (auth.uid() = driver_id)
-  with check (
-    status in ('completed', 'broken') and
-    exists (
-      select 1 from public.users
-      where id = auth.uid()
-      and role = 'driver'
+    auth.uid() = driver_id 
+    and exists (
+      select 1 from public.users 
+      where id = auth.uid() 
+      and role = 'driver' 
       and status = 'active'
     )
+    and not exists (
+      select 1 from public.drive_and_save 
+      where driver_id = auth.uid() 
+      and status = 'active'
+    )
+    and save_percentage between 1 and 100
+    and duration_days in (7, 30, 365)
   );
+
+create policy "Drivers can complete savings plan"
+  on public.drive_and_save for update
+  using (
+    auth.uid() = driver_id
+    and end_date <= now()
+    and status = 'active'
+  )
+  with check (status = 'completed');
+
+create policy "Drivers can break savings plan"
+  on public.drive_and_save for update
+  using (
+    auth.uid() = driver_id 
+    and status = 'active'
+    and exists (
+      select 1 from public.drive_and_save_wallets 
+      where driver_id = auth.uid() 
+      and balance = 0
+    )
+  )
+  with check (status = 'broken');
+
+create policy "Drivers can delete inactive savings plan"
+  on public.drive_and_save for delete
+  using (
+    auth.uid() = driver_id 
+    and status != 'active'
+  );
+
+

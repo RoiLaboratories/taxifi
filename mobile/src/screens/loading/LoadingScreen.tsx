@@ -1,91 +1,81 @@
-import { StyleSheet, View } from 'react-native';
-import { type ReactElement, useEffect, useCallback } from 'react';
+import { StyleSheet, View, Text, Animated } from 'react-native';
+import { type ReactElement, useEffect, useRef } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as SplashScreen from 'expo-splash-screen';
 import { type RootStackParamList } from '../../types/navigation';
-import { supabase } from '../../services/supabase';
-
-// Configure splash screen to stay visible while we check auth
-SplashScreen.preventAutoHideAsync();
 
 export function LoadingScreen(): ReactElement {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-  const checkAuth = useCallback(async () => {
-    try {
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession();
+  useEffect(() => {
+    // Fade in animation
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Wait for 1 second
+      Animated.delay(1000),
+      // Fade out
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // After animation, check auth
       
-      if (!session) {
-        // No session, hide splash and navigate to Auth
-        await SplashScreen.hideAsync();
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Auth', params: { screen: 'Main' } }],
-        });
-        return;
-      }
-
-      // Get user profile to determine role
-      const { data: profile } = await supabase
-        .from('users')
-        .select('role, status')
-        .eq('id', session.user.id)
-        .single();
-
-      if (!profile) {
-        // User exists in auth but not in database
-        await supabase.auth.signOut();
-        await SplashScreen.hideAsync();
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Auth', params: { screen: 'Main' } }],
-        });
-        return;
-      }
-
-      // Navigate based on user role
-      if (profile.role === 'driver') {
-        await SplashScreen.hideAsync();
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Driver', params: { screen: 'Dashboard' } }],
-        });
-      } else {
-        await SplashScreen.hideAsync();
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Rider', params: { screen: 'Home' } }],
-        });
-      }
-    } catch (error) {
-      console.error('Error checking auth:', error);
-      // Make sure splash screen is hidden even if there's an error
-      try {
-        await SplashScreen.hideAsync();
-      } catch (e) {
-        console.error('Error hiding splash screen:', e);
-      }
+      // For now, just navigate to Auth
       navigation.reset({
         index: 0,
         routes: [{ name: 'Auth', params: { screen: 'Main' } }],
       });
-    }
-  }, [navigation]);
+    });
+  }, [navigation, fadeAnim, scaleAnim]);
 
-  useEffect(() => {
-    // Check auth when component mounts
-    checkAuth();
-  }, [checkAuth]);
-
-  // Return empty view since splash screen handles the UI
-  return <View style={styles.container} />;
+  return (
+    <View style={styles.container}>
+      <Animated.View
+        style={[
+          styles.logoContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        <Text style={styles.logo}>TaxiFi</Text>
+      </Animated.View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-  }
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    letterSpacing: 2,
+  },
 });

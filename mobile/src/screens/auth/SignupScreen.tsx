@@ -13,10 +13,11 @@ import {
 import { type ReactElement, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { supabase } from '../../services/supabase';
-import { type UserRole } from '../../types/supabase';
 import { type NavigationProps } from '../../types/navigation';
 import { RoleSelection } from '../../components/RoleSelection';
+import { signUp } from '../../services/auth';
+
+type UserRole = 'rider' | 'driver';
 
 interface SignupForm {
   email: string;
@@ -71,32 +72,32 @@ export function SignupScreen(): ReactElement {
 
   const signUpWithEmail = async () => {
     if (!validateForm()) return;
+    if (!form.role) {
+      Alert.alert('Error', 'Please select a role');
+      return;
+    }
 
     setLoading(true);
     try {
-      // First sign up the user in auth
-      const { data: { user }, error } = await supabase.auth.signUp({
+      const user = await signUp({
         email: form.email,
         password: form.password,
-        options: {
-          data: {
-            full_name: form.fullName,
-            phone_number: form.phoneNumber,
-            role: form.role
-          }
-        }
+        full_name: form.fullName,
+        phone_number: form.phoneNumber,
+        role: form.role // Now TypeScript knows form.role is not null
       });
 
-      if (error) throw error;
-
-      if (user) {
-
-        // Skip email verification and proceed to appropriate dashboard
-        if (form.role === 'driver') {
-          navigation.navigate('Driver', { screen: 'Dashboard' });
-        } else {
-          navigation.navigate('Rider', { screen: 'Home' });
-        }
+      // Navigate to appropriate dashboard
+      if (user.role === 'driver') {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Driver', params: { screen: 'Dashboard' } }]
+        });
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Rider', params: { screen: 'Home' } }]
+        });
       }
     } catch (error: any) {
       Alert.alert('Error', error.message);

@@ -6,12 +6,51 @@ import {
   TouchableOpacity, 
   KeyboardAvoidingView, 
   Platform,
-  ScrollView
+  ScrollView,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
-import { type ReactElement } from 'react';
+import { type ReactElement, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { type NavigationProps } from '../../types/navigation';
+import { login } from '../../services/auth';
 
 export function LoginScreen(): ReactElement {
+  const navigation = useNavigation<NavigationProps>();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const user = await login({ email, password });
+      
+      // Navigate based on user role
+      if (user.role === 'driver') {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Driver', params: { screen: 'Dashboard' } }]
+        });
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Rider', params: { screen: 'Home' } }]
+        });
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
@@ -36,6 +75,8 @@ export function LoginScreen(): ReactElement {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
+                value={email}
+                onChangeText={setEmail}
               />
             </View>
 
@@ -45,6 +86,8 @@ export function LoginScreen(): ReactElement {
                 style={styles.input}
                 placeholder="Enter your password"
                 secureTextEntry
+                value={password}
+                onChangeText={setPassword}
               />
             </View>
 
@@ -57,9 +100,14 @@ export function LoginScreen(): ReactElement {
 
             <TouchableOpacity 
               style={styles.loginButton}
-              onPress={() => {/* TODO: Handle login */}}
+              onPress={handleLogin}
+              disabled={loading}
             >
-              <Text style={styles.loginButtonText}>Log In</Text>
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.loginButtonText}>Log In</Text>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>

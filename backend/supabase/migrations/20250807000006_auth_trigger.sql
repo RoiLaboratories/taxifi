@@ -1,7 +1,14 @@
 -- Create function to handle user creation
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+security definer
+set search_path = public
+language plpgsql
+as $$
 begin
+  -- Allow the trigger to bypass RLS
+  alter table public.users disable trigger all;
+  
   insert into public.users (
     id,
     email,
@@ -19,9 +26,13 @@ begin
     new.id,
     'active'
   );
+  
+  -- Re-enable triggers
+  alter table public.users enable trigger all;
+  
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 -- Create trigger to automatically create user profile
 drop trigger if exists on_auth_user_created on auth.users;
