@@ -1,48 +1,50 @@
 import { StyleSheet, View, Text, Animated } from 'react-native';
-import { type ReactElement, useEffect, useRef } from 'react';
+import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { type RootStackParamList } from '../../types/navigation';
+import * as SplashScreen from 'expo-splash-screen';
 
 export function LoadingScreen(): ReactElement {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const [isReady, setIsReady] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Fade in animation
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]),
-      // Wait for 1 second
-      Animated.delay(1000),
-      // Fade out
+    async function prepare() {
+      try {
+        // Ensure splash screen is hidden
+        await SplashScreen.hideAsync();
+        setIsReady(true);
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+    prepare();
+  }, []);
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    const timer = setTimeout(() => {
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 800,
         useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // After animation, check auth
-      
-      // For now, just navigate to Auth
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Auth', params: { screen: 'Main' } }],
+      }).start(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Auth', params: { screen: 'Main' } }],
+        });
       });
-    });
-  }, [navigation, fadeAnim, scaleAnim]);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [navigation, fadeAnim, isReady]);
+
+  if (!isReady) {
+    return <View style={styles.container} />;
+  }
 
   return (
     <View style={styles.container}>
@@ -51,7 +53,6 @@ export function LoadingScreen(): ReactElement {
           styles.logoContainer,
           {
             opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
           },
         ]}
       >

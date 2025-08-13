@@ -5,7 +5,7 @@ import {
   TextInput, 
   TouchableOpacity, 
   ScrollView,
-  Alert,
+
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView
@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { type NavigationProps } from '../../types/navigation';
 import { RoleSelection } from '../../components/RoleSelection';
 import { signUp } from '../../services/auth';
+import Toast from 'react-native-toast-message';
 
 type UserRole = 'rider' | 'driver';
 
@@ -47,66 +48,90 @@ export function SignupScreen(): ReactElement {
 
   const validateForm = () => {
     if (!form.email || !form.password || !form.confirmPassword || !form.fullName || !form.phoneNumber || !form.role) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please fill in all fields'
+      });
       return false;
     }
     if (form.password !== form.confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Passwords do not match'
+      });
       return false;
     }
     if (form.password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Password must be at least 8 characters'
+      });
       return false;
     }
     if (!/^\d{11}$/.test(form.phoneNumber)) {
-      Alert.alert('Error', 'Please enter a valid phone number');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please enter a valid phone number'
+      });
       return false;
     }
     return true;
   };
 
-  const handleRoleSelect = (role: UserRole) => {
-    setForm(prev => ({ ...prev, role }));
+  const handleRoleSelect = (role: UserRole): void => {
+    setForm((prev: SignupForm) => ({ ...prev, role }));
     setStep('details');
   };
 
   const signUpWithEmail = async () => {
     if (!validateForm()) return;
     if (!form.role) {
-      Alert.alert('Error', 'Please select a role');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please select a role'
+      });
       return;
     }
 
     setLoading(true);
     try {
-      const user = await signUp({
+      await signUp({
         email: form.email,
         password: form.password,
         full_name: form.fullName,
         phone_number: form.phoneNumber,
-        role: form.role // Now TypeScript knows form.role is not null
+        role: form.role
       });
 
-      // Navigate to appropriate dashboard
-      if (user.role === 'driver') {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Driver', params: { screen: 'Dashboard' } }]
-        });
-      } else {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Rider', params: { screen: 'Home' } }]
-        });
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Toast.show({
+        type: 'success',
+        text1: 'Registration Successful',
+        text2: 'Your account has been created successfully. Please login to continue.',
+        onPress: () => {
+          Toast.hide();
+          navigation.navigate('Auth', {
+            screen: 'Login'
+          });
+        },
+        visibilityTime: 3000
+      });
+    } catch (error: unknown) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error instanceof Error ? error.message : 'An unknown error occurred'
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const renderContent = () => {
+  const renderContent = (): ReactElement => {
     if (step === 'role') {
       return <RoleSelection onRoleSelect={handleRoleSelect} />;
     }
@@ -120,7 +145,7 @@ export function SignupScreen(): ReactElement {
             placeholder="Enter your full name"
             placeholderTextColor="#999999"
             value={form.fullName}
-            onChangeText={(text) => setForm(prev => ({ ...prev, fullName: text }))}
+            onChangeText={(text) => setForm((prev: SignupForm) => ({ ...prev, fullName: text }))}
             autoCapitalize="words"
           />
         </View>
@@ -132,7 +157,7 @@ export function SignupScreen(): ReactElement {
             placeholder="Enter your email address"
             placeholderTextColor="#999999"
             value={form.email}
-            onChangeText={(text) => setForm(prev => ({ ...prev, email: text }))}
+            onChangeText={(text) => setForm((prev: SignupForm) => ({ ...prev, email: text }))}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -145,7 +170,7 @@ export function SignupScreen(): ReactElement {
             placeholder="Enter your phone number"
             placeholderTextColor="#999999"
             value={form.phoneNumber}
-            onChangeText={(text) => setForm(prev => ({ ...prev, phoneNumber: text }))}
+            onChangeText={(text) => setForm((prev: SignupForm) => ({ ...prev, phoneNumber: text }))}
             keyboardType="phone-pad"
           />
         </View>
@@ -157,7 +182,7 @@ export function SignupScreen(): ReactElement {
             placeholder="Create a password"
             placeholderTextColor="#999999"
             value={form.password}
-            onChangeText={(text) => setForm(prev => ({ ...prev, password: text }))}
+            onChangeText={(text) => setForm((prev: SignupForm) => ({ ...prev, password: text }))}
             secureTextEntry
           />
         </View>
@@ -169,7 +194,7 @@ export function SignupScreen(): ReactElement {
             placeholder="Confirm your password"
             placeholderTextColor="#999999"
             value={form.confirmPassword}
-            onChangeText={(text) => setForm(prev => ({ ...prev, confirmPassword: text }))}
+            onChangeText={(text) => setForm((prev: SignupForm) => ({ ...prev, confirmPassword: text }))}
             secureTextEntry
           />
         </View>

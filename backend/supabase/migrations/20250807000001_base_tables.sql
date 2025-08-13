@@ -29,7 +29,7 @@ create table if not exists public.wallets (
     created_at timestamp with time zone default timezone('utc'::text, now()),
     updated_at timestamp with time zone default timezone('utc'::text, now()),
     primary key (id),
-    constraint wallets_user_id_fkey foreign key (user_id) references public.users (id) on delete cascade
+    constraint wallets_user_id_fkey foreign key (user_id) references auth.users (id) on delete cascade
 );
 
 -- Create rides table

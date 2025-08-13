@@ -6,6 +6,10 @@ drop policy if exists "Enable insert for authenticated users" on public.users;
 drop policy if exists "Users can view own profile" on public.users;
 drop policy if exists "Users can update own profile" on public.users;
 drop policy if exists "Users can insert own profile" on public.users;
+drop policy if exists "Enable users to manage their profile" on public.users;
+drop policy if exists "Allow function-based user creation" on public.users;
+drop policy if exists "Allow new user creation" on public.users;
+drop policy if exists "Allow wallet creation during signup" on public.wallets;
 drop policy if exists "Wallets are viewable by owner" on public.wallets;
 drop policy if exists "Users can view wallet transactions" on public.transactions;
 drop policy if exists "Rides are viewable by participants" on public.rides;
@@ -33,30 +37,47 @@ drop policy if exists "Rides are viewable by participants" on public.rides;
 drop policy if exists "Riders can request rides" on public.rides;
 drop policy if exists "Drivers can accept rides" on public.rides;
 drop policy if exists "Chat messages viewable by participants" on public.chat_messages;
+drop policy if exists "Drivers can view their drive and save wallet" on public.drive_and_save_wallets;
+drop policy if exists "Drivers can withdraw from their drive and save wallet" on public.drive_and_save_wallets;
+drop policy if exists "Drivers can view their savings plan" on public.drive_and_save;
+drop policy if exists "Drivers can create savings plan" on public.drive_and_save;
+drop policy if exists "Drivers can complete savings plan" on public.drive_and_save;
+drop policy if exists "Drivers can break savings plan" on public.drive_and_save;
+drop policy if exists "Drivers can delete inactive savings plan" on public.drive_and_save;
 
 -- Users table policies
--- Allow the trigger to insert new users
-create policy "Allow trigger to insert users"
+-- Allow function-based user creation and management
+create policy "Allow function-based user creation"
   on public.users 
+  for all  -- This allows the function to handle the user creation
+  using (
+    -- Allow users to manage their own profile
+    auth.uid() = id
+    OR
+    -- Allow the function to manage any profile
+    auth.role() = 'service_role'
+  )
+  with check (
+    -- Allow users to manage their own profile
+    auth.uid() = id
+    OR
+    -- Allow the function to manage any profile
+    auth.role() = 'service_role'
+  );
+
+-- Allow insert into wallets during signup
+create policy "Allow wallet creation during signup"
+  on public.wallets
   for insert
-  to authenticated, anon
-  with check (true);
-
--- Allow users to manage their own profile
-create policy "Enable users to manage their profile"
-  on public.users
-  for all
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
-
-create policy "Users can view own profile"
-  on public.users for select
-  using (auth.uid() = id);
-
-create policy "Users can update own profile"
-  on public.users for update
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
+  to authenticated, anon, service_role
+  with check (
+    exists (
+      select 1 from public.users
+      where users.id = user_id
+    )
+    OR
+    auth.role() = 'service_role'
+  );
 
 -- Wallets table policies
 create policy "Wallets are viewable by owner"

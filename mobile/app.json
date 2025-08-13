@@ -12,8 +12,8 @@
       "backgroundColor": "#000000",
       "resizeMode": "contain",
       "imageResizeMode": "contain",
-      "splashScreenAnimation": "scale",
-      "duration": 3000
+      "splashScreenAnimation": "none",
+      "duration": 0
     },
     "ios": {
       "supportsTablet": true

@@ -7,7 +7,7 @@ import {
   KeyboardAvoidingView, 
   Platform,
   ScrollView,
-  Alert,
+
   ActivityIndicator
 } from 'react-native';
 import { type ReactElement, useState } from 'react';
@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { type NavigationProps } from '../../types/navigation';
 import { login } from '../../services/auth';
+import Toast from 'react-native-toast-message';
 
 export function LoginScreen(): ReactElement {
   const navigation = useNavigation<NavigationProps>();
@@ -24,7 +25,11 @@ export function LoginScreen(): ReactElement {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please fill in all fields'
+      });
       return;
     }
 
@@ -45,7 +50,11 @@ export function LoginScreen(): ReactElement {
         });
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: error.message
+      });
     } finally {
       setLoading(false);
     }
