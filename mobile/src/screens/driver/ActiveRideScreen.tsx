@@ -15,7 +15,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { type NavigationProps } from '../../types/navigation';
 import Toast from 'react-native-toast-message';
-import * as Location from 'expo-location';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { mapboxService } from '../../services/mapbox.service';
 
@@ -54,21 +53,11 @@ export function ActiveRideScreen() {
   const { rideId } = route.params as RouteParams;
   
   const [rideDetails, setRideDetails] = useState<RideDetails | null>(null);
-  const [locationSubscription, setLocationSubscription] = useState<Location.LocationSubscription | null>(null);
+  const [locationSubscription, setLocationSubscription] = useState<{ remove: () => void } | null>(null);
 
   useEffect(() => {
     async function initialize() {
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          Toast.show({
-            type: 'error',
-            text1: 'Permission Error',
-            text2: 'Location permission is required for this feature'
-          });
-          return;
-        }
-        
         await loadRideDetails();
         await setupLocationTracking();
       } catch (error) {
@@ -76,7 +65,7 @@ export function ActiveRideScreen() {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: 'Failed to initialize map. Please check your permissions and internet connection.'
+          text2: 'Failed to initialize map'
         });
       }
     }

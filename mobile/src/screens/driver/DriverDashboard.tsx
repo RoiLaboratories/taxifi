@@ -18,7 +18,6 @@ import Toast from 'react-native-toast-message';
 import { logout } from '../../services/auth';
 import { type NavigationProps } from '../../types/navigation';
 import { styles } from './styles';
-import * as Location from 'expo-location';
 import { mapboxService } from '../../services/mapbox.service';
 
 interface EarningsSummary {
@@ -240,27 +239,12 @@ export function DriverDashboard() {
     }
   }
 
+  // For prototype: Use mock location
   async function fetchUserLocation() {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Toast.show({
-          type: 'error',
-          text1: 'Permission needed',
-          text2: 'Location permission is required to receive ride requests'
-        });
-        return null;
-      }
-
-      const location = await Location.getCurrentPositionAsync({});
-      return {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude
-      };
-    } catch (error) {
-      console.error('Error getting location:', error);
-      return null;
-    }
+    return {
+      latitude: 6.5244,
+      longitude: 3.3792
+    };
   }
 
   function subscribeToRideRequests() {
