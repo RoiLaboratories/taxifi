@@ -144,45 +144,33 @@ export function ActiveRideScreen() {
   }
 
   async function setupLocationTracking() {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Toast.show({
-          type: 'error',
-          text1: 'Permission needed',
-          text2: 'Location permission is required to track rides'
-        });
-        return;
-      }
-
-      const subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 5000,
-          distanceInterval: 10,
-        },
-        (location) => {
-          // Update driver's location in local state
-          if (rideDetails) {
-            setRideDetails(prev => prev ? {
-              ...prev,
-              driver_location: {
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-              }
-            } : null);
-          }
+    // For prototype: Use mock location instead of real location tracking
+    if (rideDetails) {
+      // Set initial mock location near pickup point
+      setRideDetails(prev => prev ? {
+        ...prev,
+        driver_location: {
+          latitude: prev.pickup_location.latitude + 0.001,
+          longitude: prev.pickup_location.longitude + 0.001,
         }
-      );
+      } : null);
 
-      setLocationSubscription(subscription);
-    } catch (error) {
-      console.error('Error setting up location tracking:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to start location tracking'
-      });
+      // Simulate location updates every 5 seconds
+      const mockLocationInterval = setInterval(() => {
+        setRideDetails(prev => {
+          if (!prev || !prev.driver_location) return prev;
+          return {
+            ...prev,
+            driver_location: {
+              latitude: prev.driver_location.latitude + 0.0001,
+              longitude: prev.driver_location.longitude + 0.0001,
+            }
+          };
+        });
+      }, 5000);
+
+      // Store the interval for cleanup
+      setLocationSubscription({ remove: () => clearInterval(mockLocationInterval) } as any);
     }
   }
 
@@ -216,10 +204,10 @@ export function ActiveRideScreen() {
     }
 
     try {
-      const location = await Location.getCurrentPositionAsync({});
+      // For prototype: Use destination location instead of current location
       const finalLocation = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude
+        latitude: rideDetails.destination_location.latitude,
+        longitude: rideDetails.destination_location.longitude
       };
 
       // Use the original destination for final calculations

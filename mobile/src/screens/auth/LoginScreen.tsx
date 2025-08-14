@@ -169,6 +169,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
+    color: '#000000',
   },
   forgotPassword: {
     alignSelf: 'flex-end',
